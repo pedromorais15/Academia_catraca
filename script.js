@@ -2,7 +2,7 @@
 let cpfRaw = "";
 const displayInput = document.getElementById('display');
 const msgParagraph = document.getElementById('msg');
-const API_URL = 'https://api-academia-mu.vercel.app';
+const API_URL = 'https://api-academia-five.vercel.app/';
 
 const buttonsNumber = document.querySelectorAll('.n');
 const btnClear = document.getElementById('btnLimpar');
