@@ -2,7 +2,7 @@
 let cpfRaw = "";
 const displayInput = document.getElementById('display');
 const msgParagraph = document.getElementById('msg');
-const API_URL = 'https://api-academia-five.vercel.app';
+const API_URL = 'https://api-academia-five.vercel.app'; 
 
 const buttonsNumber = document.querySelectorAll('.n');
 const btnClear = document.getElementById('btnLimpar');
@@ -33,7 +33,7 @@ function resetMessageStyle() {
 
 // ======================== ADICIONAR NÚMERO ========================
 function addNumber(num) {
-    if (window.navigator && window.navigator.vibrate) {
+    if (window.navigator?.vibrate) {
         window.navigator.vibrate(10);
     }
     
@@ -46,11 +46,9 @@ function addNumber(num) {
         msgParagraph.innerText = "⚠️ CPF COMPLETO";
         msgParagraph.className = "erro";
         setTimeout(() => {
-            if (msgParagraph.innerText === "⚠️ CPF COMPLETO") {
-                if (cpfRaw.length === 11) {
-                    msgParagraph.innerText = "INSIRA SEU CPF";
-                    resetMessageStyle();
-                }
+            if (cpfRaw.length === 11) {
+                msgParagraph.innerText = "INSIRA SEU CPF";
+                resetMessageStyle();
             }
         }, 1200);
     }
@@ -58,7 +56,7 @@ function addNumber(num) {
 
 // ======================== LIMPAR ========================
 function limparTudo() {
-    if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(8);
+    if (window.navigator?.vibrate) window.navigator.vibrate(8);
     cpfRaw = "";
     updateDisplay();
     resetMessageStyle();
@@ -73,7 +71,7 @@ async function validarCPF() {
     if (cpfNumerico.length !== 11) {
         msgParagraph.innerText = "❌ CPF INCOMPLETO";
         msgParagraph.className = "erro";
-        if (window.navigator && window.navigator.vibrate) window.navigator.vibrate([50, 30, 50]);
+        if (window.navigator?.vibrate) window.navigator.vibrate([50, 30, 50]);
         return;
     }
     
@@ -84,63 +82,114 @@ async function validarCPF() {
         const response = await fetch(`${API_URL}/catraca`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({ cpf: cpfNumerico })
         });
-        
-        if (!response.ok) {
-            let errorDetail = `Erro ${response.status}`;
-            try {
-                const errorData = await response.json();
-                errorDetail = errorData.message || errorDetail;
-            } catch(e) {}
-            throw new Error(errorDetail);
+
+        const data = await response.json();
+        console.log("RESPOSTA COMPLETA DA API:", data);
+        console.log("STATUS DA RESPOSTA:", response.status);
+
+        // VERIFICA SE É CPF NÃO CADASTRADO
+        // Caso 1: Status 404
+        if (response.status === 404) {
+            msgParagraph.innerText = "❌ CPF NÃO CADASTRADO";
+            msgParagraph.className = "erro";
+            
+            if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+            
+            setTimeout(() => {
+                limparTudo();
+            }, 2500);
+            return;
         }
         
-        const data = await response.json();
-        
-        if (data.status && data.status.toUpperCase() === "ATIVO") {
+        // Caso 2: Verifica mensagem de erro da API
+        if (data.error) {
+            const erroLower = data.error.toLowerCase();
+            
+            if (erroLower.includes("não encontrado") || 
+                erroLower.includes("not found") ||
+                erroLower.includes("inexistente") ||
+                erroLower.includes("não cadastrado")) {
+                
+                msgParagraph.innerText = "❌ CPF NÃO CADASTRADO";
+                msgParagraph.className = "erro";
+                
+                if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+                
+                setTimeout(() => {
+                    limparTudo();
+                }, 2500);
+                return;
+            } else {
+                // Outro tipo de erro
+                msgParagraph.innerText = data.error;
+                msgParagraph.className = "erro";
+                
+                if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+                
+                setTimeout(() => {
+                    limparTudo();
+                }, 2500);
+                return;
+            }
+        }
+
+        const status = (data.status || "").toString().toUpperCase();
+
+        // Caso 3: CPF ATIVO
+        if (response.ok && status === "ATIVO") {
             msgParagraph.innerText = "✅ ACESSO LIBERADO";
             msgParagraph.className = "sucesso";
-            if (window.navigator && window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
-            
+
+            if (window.navigator?.vibrate) window.navigator.vibrate([100, 50, 100]);
+
             setTimeout(() => {
                 limparTudo();
                 msgParagraph.innerText = "✅ BEM-VINDO(A)";
                 msgParagraph.className = "sucesso";
+
                 setTimeout(() => {
-                    if (msgParagraph.innerText === "✅ BEM-VINDO(A)") {
-                        msgParagraph.innerText = "INSIRA SEU CPF";
-                        msgParagraph.className = "";
-                    }
-                }, 2000);
-            }, 2800);
-        } else {
-            msgParagraph.innerText = "⛔ ACESSO NEGADO";
-            msgParagraph.className = "erro";
-            if (window.navigator && window.navigator.vibrate) window.navigator.vibrate([80, 40, 80]);
-            
-            setTimeout(() => {
-                if (msgParagraph.innerText === "⛔ ACESSO NEGADO") {
                     msgParagraph.innerText = "INSIRA SEU CPF";
                     msgParagraph.className = "";
-                }
+                }, 2000);
+            }, 2800);
+        } 
+        // Caso 4: CPF INATIVO
+        else if (status === "INATIVO") {
+            msgParagraph.innerText = "⛔ CPF INATIVO - PROCURE A ADMINISTRAÇÃO";
+            msgParagraph.className = "erro";
+            
+            if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+            
+            setTimeout(() => {
+                limparTudo();
             }, 2500);
         }
-    } 
-    catch (error) {
+        // Caso 5: Qualquer outra resposta
+        else {
+            msgParagraph.innerText = "❌ CPF NÃO CADASTRADO";
+            msgParagraph.className = "erro";
+
+            if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+
+            setTimeout(() => {
+                limparTudo();
+            }, 2500);
+        }
+
+    } catch (error) {
         console.error("Erro na API:", error);
         msgParagraph.innerText = "🔌 ERRO DE CONEXÃO";
         msgParagraph.className = "erro";
-        if (window.navigator && window.navigator.vibrate) window.navigator.vibrate([100, 100, 100]);
-        
+
+        if (window.navigator?.vibrate) window.navigator.vibrate([100, 100, 100]);
+
         setTimeout(() => {
-            if (msgParagraph.innerText === "🔌 ERRO DE CONEXÃO") {
-                msgParagraph.innerText = "INSIRA SEU CPF";
-                msgParagraph.className = "";
-            }
+            msgParagraph.innerText = "INSIRA SEU CPF";
+            msgParagraph.className = "";
         }, 3000);
     }
 }
@@ -183,7 +232,10 @@ document.addEventListener('keydown', (e) => {
     if (key >= '0' && key <= '9') {
         e.preventDefault();
         addNumber(key);
-        const targetBtn = Array.from(buttonsNumber).find(btn => btn.getAttribute('data-num') === key);
+
+        const targetBtn = Array.from(buttonsNumber)
+            .find(btn => btn.getAttribute('data-num') === key);
+
         if (targetBtn) {
             targetBtn.classList.add('button-tap');
             setTimeout(() => targetBtn.classList.remove('button-tap'), 100);
@@ -192,6 +244,7 @@ document.addEventListener('keydown', (e) => {
     else if (key === 'Enter') {
         e.preventDefault();
         validarCPF();
+
         if (btnOk) {
             btnOk.classList.add('button-tap');
             setTimeout(() => btnOk.classList.remove('button-tap'), 100);
@@ -200,6 +253,7 @@ document.addEventListener('keydown', (e) => {
     else if (key === 'Backspace' || key === 'Delete') {
         e.preventDefault();
         limparTudo();
+
         if (btnClear) {
             btnClear.classList.add('button-tap');
             setTimeout(() => btnClear.classList.remove('button-tap'), 100);
@@ -211,14 +265,13 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Previne teclado virtual no mobile
+// ======================== MOBILE / BLOQUEIOS ========================
 displayInput.addEventListener('touchstart', (e) => {
     e.preventDefault();
 });
 
-// Remove menu de contexto
 document.querySelector('.totem')?.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// Inicialização
+// ======================== INICIALIZAÇÃO ========================
 resetMessageStyle();
 updateDisplay();
